@@ -1,0 +1,9 @@
+praw 
+
+pyspark==3.4.1
+
+pymongo
+
+confluent-kafka
+
+python-dotenv
