@@ -11,7 +11,7 @@ load_dotenv()
 
 # Kafka configuration
 kafka_bootstrap_servers = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:29092')
-kafka_topic = os.getenv('KAFKA_TOPIC', 'reddit_stream')
+kafka_topic = os.getenv('KAFKA_TOPIC', 'reddit')
 
 # MongoDB configuration
 MONGO_USER = os.getenv("MONGO_USER")
@@ -35,9 +35,6 @@ class SparkConsumer:
             .config("spark.mongodb.connection.uri", MONGO_URI) \
             .config("spark.mongodb.database", MONGO_DB) \
             .config("spark.mongodb.collection", MONGO_COLLECTION) \
-            .config("spark.mongodb.write.connection.timeout.ms", "30000") \
-            .config("spark.mongodb.read.connection.timeout.ms", "30000") \
-            .config("spark.mongodb.operation.timeout.ms", "30000") \
             .getOrCreate()
 
         self.spark.sparkContext.setLogLevel("WARN")
@@ -49,8 +46,7 @@ class SparkConsumer:
             StructField("author", StringType(), True),
             StructField("subreddit", StringType(), True),
             StructField("score", IntegerType(), True),
-            StructField("num_comments", IntegerType(), True),
-            StructField("timestamp", DoubleType(), True)
+            StructField("num_comments", IntegerType(), True)
         ])
         
         print("Spark session initialized")

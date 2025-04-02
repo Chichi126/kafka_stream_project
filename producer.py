@@ -1,77 +1,83 @@
 import praw
+import time 
 import json
-import time
 from dotenv import load_dotenv
 import os
 from confluent_kafka import Producer
 
-#Initiallize the load_doenv envronmental variable
+
+
+
+# Loading the environmental variables from the .env file
 load_dotenv()
 
+# Loading the Reddit Credentials from the .env file
 
-#Load the Reddit Api credentials
-
-client_id = os.getenv('CLIENT_ID')
-client_secret = os.getenv('CLIENT_SECRET')
-user_agent = os.getenv('USER_AGENT')
-username = os.getenv('USERNAME')
-password = os.getenv('PASSWORD')
-subreddit_name = os.getenv('REDDIT_SUBREDDIT')
-
-kafka_broker = os.getenv('KAFKA_BROKER')
-kafka_topic = os.getenv('KAFKA_TOPIC')
+reddit_client_id=os.getenv("CLIENT_ID")
+reddit_secret_id=os.getenv("CLIENT_SECRET")
+reddit_user_agent=os.getenv("USER_AGENT")
+reddit_password=os.getenv("PASSWORD")
+reddit_username=os.getenv("USERNAME")
+reddit_subreddit=os.getenv("REDDIT_SUBREDDIT")
 
 
-reddit = praw.Reddit(
-    client_id=client_id,
-    client_secret=client_secret,
-    user_agent=user_agent,
-    username=username,  
-    password=password
+# Kafka Credentials
+kafka_broker = os.getenv("KAFKA_BROKER")
+kafka_topic = os.getenv("KAFKA_TOPIC")
+
+
+reddit= praw.Reddit(
+    client_id=reddit_client_id,
+    client_secret=reddit_secret_id,
+    username=reddit_username,
+    password=reddit_password,
+    user_agent=reddit_user_agent
 )
 
 
-producer = Producer({
-            'bootstrap.servers': kafka_broker,
-            'acks': 'all',
-            'retries': 3,
-            'retry.backoff.ms': 100
-        })
-        
-print(f" Connected to Kafka at {kafka_broker} and producing to topic {kafka_topic}")
+producer= Producer({
+        'bootstrap.servers': kafka_broker,
+        'acks':'all',
+        'retries': 4,
+        'retry.backoff.ms': 100,
+})
+
+print(f'Connected to Kafka at {kafka_broker} and topic to stream :{kafka_topic}')
+
 
 def delivery_report(err, msg):
     if err is not None:
-        print(f"Message delivery failed: {err}")
+        print(f' message delivery failed: {err}')
     else:
-        print(f"Message delivered to {msg.topic()} [{msg.partition()}]")
+        print(f'message delivered to {msg.topic()} [{msg.partition()}]')
 
 
 
-def stream_reddit_data():
-    subreddit = reddit.subreddit(subreddit_name)
-    
-    for submission in subreddit.stream.submissions():
-        data = {
+
+subreddit=reddit.subreddit(reddit_subreddit)
+# subscribing to Reddit stream
+for submission in subreddit.stream.submissions():
+    data = {
             'id': submission.id,
             'title': submission.title,
             'author': submission.author.name,
             'score': submission.score,
             'num_comments': submission.num_comments,
-            'subreddit': submission.subreddit.display_name,
-        }
+            'subreddit': submission.subreddit.display_name
+    }
 
-        json_data = json.dumps(data, indent=4)
+    #convert the message to Json
+    json_data = json.dumps(data, indent=4)
 
-        # Print data before sending it to Kafka
-        print(" Sending Post to Kafka:")
+    # Sending data to kafka
+    print('sending message to kafka')
 
-        producer.produce(kafka_topic, value=json_data.encode('utf-8'), callback=delivery_report)
+    producer.produce(kafka_topic, value=json_data.encode('utf-8'), callback=delivery_report)
 
-        #print("==" * 50)
+    print(json_data)
+    producer.flush()
+    time.sleep(2)
 
-        print(json_data)
-        producer.flush()
-        time.sleep(2)
 
-stream_reddit_data()
+# calling the function
+
